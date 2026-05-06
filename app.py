@@ -30,20 +30,6 @@ def get_css():
     return ""
 
 
-def get_chatbot_history(history):
-    pairs = []
-    current_user = None
-    for msg in history or []:
-        role = msg.get("role")
-        content = msg.get("content", "")
-        if role == "user":
-            current_user = content
-        elif role == "assistant":
-            pairs.append([current_user, content])
-            current_user = None
-    return pairs
-
-
 def build_memory_block(user_message: str) -> str:
     if not memory:
         return ""
@@ -122,7 +108,7 @@ def respond(user_message, history, extra_persona, auto_tts):
         if memory:
             memory.add("tool", f"{user_message} -> {tool_result[:500]}", "tool interaction")
 
-        yield get_chatbot_history(history), history, "Tool ausgeführt."
+        yield history, history, "Tool ausgeführt."
         return
 
     system_prompt = build_system_prompt(extra_persona)
@@ -145,10 +131,10 @@ def respond(user_message, history, extra_persona, auto_tts):
         for chunk in stream_chat_completion(messages):
             partial = chunk
             history[-1]["content"] = partial
-            yield get_chatbot_history(history), history, "Antwort wird generiert..."
+            yield history, history, "Antwort wird generiert..."
     except Exception as e:
         history[-1]["content"] = f"Fehler beim Modellaufruf: {e}"
-        yield get_chatbot_history(history), history, "Fehler."
+        yield history, history, "Fehler."
         return
 
     if memory:
@@ -158,7 +144,7 @@ def respond(user_message, history, extra_persona, auto_tts):
     if ENABLE_VOICE and auto_tts:
         status = tts_speak(partial)
 
-    yield get_chatbot_history(history), history, status
+    yield history, history, status
 
 
 def clear_chat():
@@ -177,7 +163,7 @@ with gr.Blocks(title=APP_NAME) as demo:
 
     with gr.Row():
         with gr.Column(scale=3):
-            chatbot = gr.Chatbot(height=620)
+            chatbot = gr.Chatbot(type="messages", height=620)
             message = gr.Textbox(
                 label="Nachricht",
                 placeholder="Schreibe etwas oder nutze /search, /files, /read, /write",
