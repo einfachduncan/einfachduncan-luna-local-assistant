@@ -30,6 +30,20 @@ def get_css():
     return ""
 
 
+def get_chatbot_history(history):
+    pairs = []
+    current_user = None
+    for msg in history or []:
+        role = msg.get("role")
+        content = msg.get("content", "")
+        if role == "user":
+            current_user = content
+        elif role == "assistant":
+            pairs.append([current_user, content])
+            current_user = None
+    return pairs
+
+
 def build_memory_block(user_message: str) -> str:
     if not memory:
         return ""
@@ -108,7 +122,7 @@ def respond(user_message, history, extra_persona, auto_tts):
         if memory:
             memory.add("tool", f"{user_message} -> {tool_result[:500]}", "tool interaction")
 
-        yield history, history, "Tool ausgeführt."
+        yield get_chatbot_history(history), history, "Tool ausgeführt."
         return
 
     system_prompt = build_system_prompt(extra_persona)
@@ -131,10 +145,10 @@ def respond(user_message, history, extra_persona, auto_tts):
         for chunk in stream_chat_completion(messages):
             partial = chunk
             history[-1]["content"] = partial
-            yield history, history, "Antwort wird generiert..."
+            yield get_chatbot_history(history), history, "Antwort wird generiert..."
     except Exception as e:
         history[-1]["content"] = f"Fehler beim Modellaufruf: {e}"
-        yield history, history, "Fehler."
+        yield get_chatbot_history(history), history, "Fehler."
         return
 
     if memory:
@@ -144,7 +158,7 @@ def respond(user_message, history, extra_persona, auto_tts):
     if ENABLE_VOICE and auto_tts:
         status = tts_speak(partial)
 
-    yield history, history, status
+    yield get_chatbot_history(history), history, status
 
 
 def clear_chat():
@@ -158,12 +172,12 @@ def export_current_chat(history):
     return path, f"Exportiert: {path}"
 
 
-with gr.Blocks(title=APP_NAME, css=get_css()) as demo:
+with gr.Blocks(title=APP_NAME) as demo:
     gr.Markdown(f"# {APP_NAME} V2\nLokale, private KI-Assistentin")
 
     with gr.Row():
         with gr.Column(scale=3):
-            chatbot = gr.Chatbot(type="messages", height=620)
+            chatbot = gr.Chatbot(height=620)
             message = gr.Textbox(
                 label="Nachricht",
                 placeholder="Schreibe etwas oder nutze /search, /files, /read, /write",
@@ -222,4 +236,4 @@ with gr.Blocks(title=APP_NAME, css=get_css()) as demo:
 if __name__ == "__main__":
     os.makedirs("data/files", exist_ok=True)
     os.makedirs("data/chat_exports", exist_ok=True)
-    demo.launch(server_name=HOST, server_port=PORT, share=False)
+    demo.launch(server_name=HOST, server_port=PORT, share=False, css=get_css())
