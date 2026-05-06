@@ -1,0 +1,15 @@
+body, .gradio-container {
+  background: #0f1117;
+}
+
+.gradio-container {
+  color: #e6e6e6;
+}
+
+h1, h2, h3 {
+  color: #d8b4fe;
+}
+
+button {
+  border-radius: 12px !important;
+}
